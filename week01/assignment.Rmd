@@ -1,0 +1,14 @@
+---
+title: "assignment"
+author: "Timo Suter"
+date: "2023-03-01"
+output: html_document
+---
+
+```{r setup}
+library(epiwraps)
+library(GenomicRanges)
+```
+
+```{r session}
+sessionInfo()
