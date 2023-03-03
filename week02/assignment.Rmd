@@ -1,0 +1,63 @@
+---
+title: "assignment"
+author: "Timo Suter"
+date: "2023-03-03"
+output: html_document
+---
+
+```{r, packages}
+suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(ensembldb)
+  library(GenomicRanges)
+  library(epiwraps)
+})
+```
+
+```{r, fetch mouse gene}
+ah <- AnnotationHub()
+q <- query(ah, c("Mus musculus", "ensdb", "version 102", "GRCm38"), ignore.case=TRUE)
+ensdb1 <- ah[["AH89211"]]
+ensdb1
+```
+
+```{r, mouse twobit}
+r <- query(ah, c("Mus musculus", "dna_sm", "twobit", "GRCm38"), ignore.case=TRUE)
+ensdb2 <- ah[["AH88477"]]
+ensdb2
+```
+
+```{r, drosophila}
+s <- query(ah, c("Drosophila melanogaster", "dna_sm", "twobit", "BDGP6"), ignore.case=TRUE)
+ensdb3 <- ah[["AH106160"]]
+ensdb3
+```
+
+```{r, protein coding genes}
+t <- query(ah, c("Mus musculus", "ensembl"), ignore.case=TRUE)
+ensdb4 <- ah[["AH109367"]]
+ensdb4
+gns <- genes(ensdb4, filter=TxBiotypeFilter("protein_coding"))
+gns
+a <- gns$gene_id
+length(unique(a))
+b <- gns$symbol
+length(unique(b))
+```
+
+```{r, protein coding genes 2.0}
+txs <- transcripts(ensdb4, filter=TxBiotypeFilter("protein_coding"))
+txs
+seqlevels(txs)
+head(txs$tx_biotype)
+head(txs[,"tx_biotype"])
+table(seqnames(txs))
+table(txs$tx_biotype)
+exs <- exons(ensdb4, column=c("tx_id"))
+length(unique(exs))
+ExsPerTxs <- exonsBy(ensdb4, column=c("tx_id","tx_biotype"), filter=TxBiotypeFilter("protein_coding"))
+ExsPerTxs
+head(which(lengths(ExsPerTxs)>1))
+nbExonsPerPCtx <- lengths(ExsPerTxs)
+hist(nbExonsPerPCtx)
+```
