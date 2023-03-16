@@ -1,0 +1,62 @@
+---
+title: "assignment"
+author: "Timo Suter"
+date: "2023-03-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, Packages}
+suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(Rsubread)
+  library(rtracklayer)
+  library(Biostrings)
+  library(Rfastp)
+  library(epiwraps)
+})
+ah <- AnnotationHub()
+```
+
+```{r, download file}
+options(timeout=3600)
+dir.create("raw")
+download.file("https://www.encodeproject.org/files/ENCFF127RRR/@@download/ENCFF127RRR.fastq.gz", dest="raw/CTCF.fastq.gz")
+```
+
+```{r, bam}
+# QC & Trimming
+dir.create("rfastp.trimmed")
+qc <- lapply(c(CTCF="raw/CTCF.fastq.gz"), FUN=function(x){
+  Rfastp::rfastp(x, thread=4, overrepresentationAnalysis=TRUE,
+                 outputFastq=file.path("rfastp.trimmed/",gsub("\\.fastq\\.gz$","",basename(x))))
+})
+genome <- ah[["AH49674"]]
+dir.create("BDGP6_genome") 
+export(import.2bit(genome), "BDGP6_genome/genome.fasta.gz", compress=TRUE) 
+Rsubread::buildindex("BDGP6_genome/rsubread", reference="BDGP6_genome/genome.fasta.gz")
+# Alignment
+dir.create("aligned")
+align.stats <- Rsubread::align(index="BDGP6_genome/rsubread", type="dna", 
+                               readfile1=c("rfastp.trimmed/CTCF_R1.fastq.gz"), 
+                               output_file=c("aligned/CTCF.bam"),
+                               nthreads=6, sortReadsByCoordinates=TRUE)
+```
+
+3504769 reads were mapped which correlates to 91.8%.
+
+```{r, peaks}
+peaks <- callPeaks("aligned/CTCF.bam", fragLength=50L)
+peaks
+```
+
+2857 peaks were found.
+
+```{r, plot}
+head(peaks)
+region <- as.character(granges(peaks[16]))
+plotSignalTracks(c(CTFC = "aligned/CTCF.bam"), region = region)
+```
