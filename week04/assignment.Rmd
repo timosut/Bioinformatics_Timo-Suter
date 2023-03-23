@@ -1,0 +1,99 @@
+---
+title: "assignment"
+author: "Timo Suter"
+date: "2023-03-23"
+output: html_document
+---
+
+```{r}
+suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(rtracklayer)
+  library(epiwraps)
+  library(GenomicRanges)
+})
+ah <- AnnotationHub()
+```
+
+# Download data from ENCODE: https://www.encodeproject.org/
+
+##p300
+
+```{r}
+download.file("https://www.encodeproject.org/files/ENCFF653YVR/@@download/ENCFF653YVR.bed.gz",dest="p300.bed.gz")
+p300 <- rtracklayer::import("p300.bed.gz", format="narrowPeak")
+```
+
+##H3K4me3
+
+```{r}
+download.file("https://www.encodeproject.org/files/ENCFF247GVM/@@download/ENCFF247GVM.bed.gz",dest="H3K4me3.bed.gz")
+H3K4me3 <- rtracklayer::import("H3K4me3.bed.gz", format="narrowPeak")
+```
+
+##H3K4me1
+
+```{r}
+download.file("https://www.encodeproject.org/files/ENCFF333IJH/@@download/ENCFF333IJH.bed.gz",dest="H3K4me1.bed.gz")
+H3K4me1 <- rtracklayer::import("H3K4me1.bed.gz", format="narrowPeak")
+```
+
+##H3K27ac
+
+```{r}
+download.file("https://www.encodeproject.org/files/ENCFF360VIS/@@download/ENCFF360VIS.bed.gz",dest="H3K27ac.bed.gz")
+H3K27ac <- rtracklayer::import("H3K27ac.bed.gz", format="narrowPeak")
+```
+
+##H3K27me3
+
+```{r}
+download.file("https://www.encodeproject.org/files/ENCFF008XKX/@@download/ENCFF008XKX.bed.gz",dest="H3K27me3.bed.gz")
+H3K27me3 <- rtracklayer::import("H3K27me3.bed.gz", format="narrowPeak")
+```
+
+#overlaps of histone marks with p300
+
+## H3K4me3
+
+```{r}
+p300OverlapsH3K4me3 <- overlapsAny(p300, H3K4me3)
+lengthH3K4me3 <- length(p300OverlapsH3K4me3)
+trueH3K4me3 <- table(p300OverlapsH3K4me3)["TRUE"]
+proportionH3K4me3 <- trueH3K4me3/lengthH3K4me3
+proportionH3K4me3*100
+```
+35.5% of the p300 peaks overlap with H3K4me3 marks.
+
+## H3K4me1
+
+```{r}
+p300overlapsH3K4me1 <- overlapsAny(p300, H3K4me1)
+lengthH3K4me1 <- length(p300overlapsH3K4me1)
+trueH3K4me1 <- table(p300overlapsH3K4me1)["TRUE"]
+proportionH3K4me1 <- trueH3K4me1/lengthH3K4me1
+proportionH3K4me1*100
+```
+28.1% of the p300 peaks overlap with H3K4me1 marks.
+
+## H3K27ac
+
+```{r}
+p300overlapsH3K27ac <- overlapsAny(p300, H3K27ac)
+lengthH3K27ac <- length(p300overlapsH3K27ac)
+trueH3K27ac <- table(p300overlapsH3K27ac)["TRUE"]
+proportionH3K27ac <- trueH3K27ac/lengthH3K27ac
+proportionH3K27ac*100
+```
+54.9% of the p300 peaks overlap with H3K27ac marks.
+
+## H3K27me3
+
+```{r}
+p300overlapsH3K27me3 <- overlapsAny(p300, H3K27me3)
+lengthH3K27me3 <- length(p300overlapsH3K27me3)
+trueH3K27me3 <- table(p300overlapsH3K27me3)["TRUE"]
+proportionH3K27me3 <- trueH3K27me3/lengthH3K27me3
+proportionH3K27me3*100
+```
+0.2% of the p300 peaks overlap with H3K27me3 marks.
