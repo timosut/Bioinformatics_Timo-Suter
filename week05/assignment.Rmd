@@ -1,0 +1,59 @@
+---
+title: "Assignment 5"
+author: "Timo Suter"
+date: "2023-03-30"
+output: html_document
+---
+
+```{r}
+setwd("C:/Users/Timo/OneDrive - Max Suter/Dokumente/Studium/Master/2. Semester/Bioinformatic Approaches to Regulatory Genomics and Epigenomics/Week 5")
+```
+
+```{r}
+suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(ensembldb)
+  library(GenomicRanges)
+  library(epiwraps)
+  library(rtracklayer)
+  library(ggplot2)
+})
+ah <- AnnotationHub(localHub=TRUE)
+```
+
+#identify bivalent domains for H3K27me3 and H3K4me3 in mESC
+##download H3K4me3 and H3K27me3 data (from last week)
+```{r}
+download.file("https://www.encodeproject.org/files/ENCFF247GVM/@@download/ENCFF247GVM.bed.gz",dest="H3K4me3.bed.gz")
+H3K4me3 <- rtracklayer::import("H3K4me3.bed.gz", format="narrowPeak")
+download.file("https://www.encodeproject.org/files/ENCFF008XKX/@@download/ENCFF008XKX.bed.gz",dest="H3K27me3.bed.gz")
+H3K27me3 <- rtracklayer::import("H3K27me3.bed.gz", format="narrowPeak")
+```
+
+##identify bivalent domains
+```{r}
+bido_mesc <- H3K4me3[overlapsAny(H3K4me3, H3K27me3)]
+length(bido_mesc)
+```
+3219 domains of H3K4me3 are bivalent with H3K27me3 peaks in mESC
+
+#change upon differentiation into hepatocytes
+##download data
+```{r}
+download.file("https://www.encodeproject.org/files/ENCFF625DES/@@download/ENCFF625DES.bed.gz",dest="H3K4me3_hep.bed.gz")
+H3K4me3_hep <- rtracklayer::import("H3K4me3_hep.bed.gz", format="narrowPeak")
+download.file("https://www.encodeproject.org/files/ENCFF581ZRF/@@download/ENCFF581ZRF.bed.gz", dest = "H3K27me3_hep.bed.gz")
+H3K27me3_hep <- rtracklayer::import("H3K27me3_hep.bed.gz", format="narrowPeak")
+```
+
+#number of overlaps between hepatocytic H3K4me3 / H3K27me3 and mESCs
+```{r}
+overlaps <- list(bido_mesc, H3K27me3_hep, H3K4me3_hep)
+names(overlaps) <- c("mESC_overlap", "H3K27me3_hep", "H3K4me3_hep")
+regionUpset(overlaps[c(1,2,3)])
+```
+226 of mESC domains, 44285 of H3K4me3_hep domains and 73257 of H2K27me3_hep domains do not overlap with any other domain.
+1967 of H3K4me3_hep domains do overlap with H3K27me3_hep domains.
+1512 of mESC domains do overlap with H3K27me3_hep domains.
+591 of mESC domains do overlap with H3K4me3_hep domains.
+711 domains are overlapping in all 3, i.e. in hepatocytes and mESCs.
