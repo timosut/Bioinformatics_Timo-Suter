@@ -1,0 +1,106 @@
+---
+title: "assignment week 8"
+author: "Timo Suter"
+date: "2023-05-04"
+output: html_document
+---
+
+```{r}
+suppressPackageStartupMessages({
+  library(GenomicRanges)
+  library(Rsamtools)
+  library(epiwraps)
+  library(motifmatchr)
+  library(MotifDb)
+  library(universalmotif)
+  library(sechm)
+  library(BiocParallel)
+  library(ggplot2)
+  library(chromVAR)
+  library(SummarizedExperiment)
+  library(limma)
+  library(AnnotationHub)
+})
+register(SerialParam())
+```
+
+# Download data
+```{r}
+download.file("https://ethz-ins.org/content/mouse_mm38_hippocampus.peakCounts.SE.rds","mouse_mm38_hippocampus.peakCounts.SE.rds" )
+se = readRDS("mouse_mm38_hippocampus.peakCounts.SE.rds")
+```
+
+# Get database of motifs
+```{r}
+motifs <- MotifDb::query(MotifDb, c("HOCOMOCOv11-core", "Hsapiens"))
+motifs <- do.call(TFBSTools::PWMatrixList, setNames(
+           universalmotif::convert_motifs(motifs, class="TFBSTools-PWMatrix"),
+           mcols(motifs)$geneSymbol))
+ah<-AnnotationHub()
+genome<-ah[["AH68356"]]
+genome_seq<-rtracklayer::import(genome)
+```
+
+# estimate accessibility
+```{r}
+colData(se)
+names<-se@colData@rownames
+conditions<-lapply(strsplit(names[],split="_"), function(l) l[[1]])
+colData(se)$conditions<-conditions
+sex<-lapply(strsplit(names[],split="_"), function(l) l[[2]])
+colData(se)$sex<-sex
+```
+
+# add GC bias
+```{r}
+se <- chromVAR::addGCBias(se, genome=genome_seq)
+rowRanges(se)
+```
+
+## occurence of each motif in each peak
+```{r}
+moi <- motifmatchr::matchMotifs(motifs, subject=se, genome=genome_seq)
+```
+
+## aggregate motif score per sample
+```{r}
+dev <- suppressWarnings(chromVAR::computeDeviations(object = se, annotations=moi,
+                                   background_peaks=getBackgroundPeaks(se, niterations=1000)))
+variability <- chromVAR::computeVariability(dev)
+chromVAR::plotVariability(variability)
+assays(dev)$norm <- scale(assays(dev)$z)
+dev
+```
+
+## differential analysis
+```{r}
+dev$conditions <- factor(unlist(dev$conditions))
+dev$conditions <- relevel(dev$conditions, "Control")
+mm1_cond <- model.matrix(~conditions, colData(dev))
+dev$sex <- factor(unlist(dev$sex))
+dev$sex <- relevel(dev$sex, "female")
+mm2_cond <- model.matrix(~sex, colData(dev))
+```
+
+### compare stressed and unstressed animals
+```{r}
+fit <- eBayes(lmFit(assays(dev)$norm, mm1_cond))
+res_condition <-topTable(fit, coef = "conditionsFSS", number=Inf)
+head(res_condition)
+res_condition$TF<-row.names(res_condition)
+ggplot(res_condition, aes(logFC, -log10(adj.P.Val), label=TF)) + geom_text()
+sechm(dev, features=head(row.names(res_condition)),assayName="norm", show_colnames = TRUE)
+```
+
+### compare males and females
+```{r}
+fit2 <- eBayes(lmFit(assays(dev)$norm, mm2_cond))
+res_sex <-topTable(fit2, coef = "sexmale", number=Inf, adjust.method="BH")
+head(res_sex)
+res_sex$TF<-row.names(res_sex)
+ggplot(res_sex, aes(logFC, -log10(adj.P.Val), label=TF)) + geom_text()
+sechm(dev, features=head(row.names(res_sex)),assayName="norm", show_colnames=TRUE)
+```
+
+#Interpretation
+The biggest variability can be seen between the sexes. Although there are some differences in motifs based on the effect of forced swim stress the main effect is visible between male and female mice. This suggest FSS can be neglected,
